@@ -3,6 +3,12 @@ name = "magic-converter"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+iced = { version = "0.10", features = ["tokio"] }
+rfd = "0.12"
+tokio = { version = "1.36", features = ["full"] }
+clap = { version = "4.5.1", features = ["derive"] }
+
 [[bin]]
 name = "magic-converter-cli"
 path = "src/bin/cli.rs"
@@ -10,8 +16,3 @@ path = "src/bin/cli.rs"
 [[bin]]
 name = "magic-converter-gui"
 path = "src/bin/gui.rs"
-
-[dependencies]
-clap = { version = "4.5.1", features = ["derive"] }
-iced = { version = "0.10", features = ["tokio"] }
-tokio = { version = "1.36", features = ["full"] }
