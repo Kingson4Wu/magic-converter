@@ -1,4 +1,4 @@
-use iced::{Sandbox, Settings};
+use iced::Settings;
 use magic_converter::gui::ConverterGui;
 
 fn main() -> iced::Result {

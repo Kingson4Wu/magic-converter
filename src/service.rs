@@ -1,6 +1,7 @@
 use std::path::Path;
 use crate::video::{convert_mts_to_mp4, convert_mts_files_in_directory};
 
+#[derive(Debug)]
 pub struct ConverterService;
 
 impl ConverterService {

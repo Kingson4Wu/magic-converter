@@ -13,5 +13,5 @@ path = "src/bin/gui.rs"
 
 [dependencies]
 clap = { version = "4.5.1", features = ["derive"] }
-iced = "0.10"
+iced = { version = "0.10", features = ["tokio"] }
 tokio = { version = "1.36", features = ["full"] }

@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, row, text, text_input};
+use iced::widget::{self, button, column, container, row, text, text_input};
 use iced::{Alignment, Element, Length, Sandbox};
 use std::path::PathBuf;
 
@@ -13,11 +13,12 @@ pub enum Message {
     ConversionComplete(Result<(), String>),
 }
 
+#[derive(Debug)]
 pub struct ConverterGui {
-    input_path: String,
-    output_path: String,
-    status_message: String,
-    service: ConverterService,
+    pub input_path: String,
+    pub output_path: String,
+    pub status_message: String,
+    pub service: ConverterService,
 }
 
 impl Sandbox for ConverterGui {
@@ -130,5 +131,11 @@ impl Sandbox for ConverterGui {
             .center_x()
             .center_y()
             .into()
+    }
+}
+
+impl ConverterGui {
+    pub fn run(settings: iced::Settings<()>) -> iced::Result {
+        <Self as Sandbox>::run(settings)
     }
 }
