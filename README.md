@@ -7,8 +7,7 @@ A versatile tool for converting MTS video files to MP4 format, featuring both co
 - Convert single MTS files to MP4
 - Batch convert all MTS files in a directory
 - Preserve original video quality using FFmpeg's copy mode
-- User-friendly GUI interface
-- Flexible command-line interface
+- Choose between CLI or GUI interface
 - Optional output directory specification
 
 ## Prerequisites
@@ -29,21 +28,32 @@ cd magic-converter
 
 2. Build the project:
 ```bash
+# Build both CLI and GUI versions
 cargo build --release
+
+# Build only CLI version
+cargo build --release --bin magic-converter-cli
+
+# Build only GUI version
+cargo build --release --bin magic-converter-gui
 ```
 
-The executable will be available in `target/release/magic-converter`
+The executables will be available in `target/release/`:
+- CLI version: `magic-converter-cli`
+- GUI version: `magic-converter-gui`
 
 ## Usage
 
-The tool can be used in two modes: Command Line Interface (CLI) or Graphical User Interface (GUI).
+### GUI Version
 
-### GUI Mode
-
-To launch the GUI interface, simply run the program without any arguments:
+To launch the GUI interface:
 
 ```bash
-cargo run
+# Using cargo
+cargo run --bin magic-converter-gui
+
+# Or using the built executable
+./target/release/magic-converter-gui
 ```
 
 The GUI provides:
@@ -54,44 +64,51 @@ The GUI provides:
   - Convert Directory: For batch converting all MTS files in a directory
 - Status message area showing conversion progress and results
 
-### CLI Mode
+### CLI Version
 
-For command-line usage, the following commands are available:
+For command-line usage:
+
+```bash
+# Using cargo
+cargo run --bin magic-converter-cli -- [COMMAND] [OPTIONS]
+
+# Or using the built executable
+./target/release/magic-converter-cli [COMMAND] [OPTIONS]
+```
+
+Available commands:
 
 #### Converting a Single File
 
 ```bash
 # Basic usage with default output directory (same as input)
-cargo run -- convert -i input.mts
+magic-converter-cli convert -i input.mts
 
 # Specify custom output directory
-cargo run -- convert -i input.mts -o /path/to/output/directory
+magic-converter-cli convert -i input.mts -o /path/to/output/directory
 ```
 
 #### Converting Multiple Files in a Directory
 
 ```bash
 # Basic usage with default output directory (same as input)
-cargo run -- convert-dir -i /path/to/input/directory
+magic-converter-cli convert-dir -i /path/to/input/directory
 
 # Specify custom output directory
-cargo run -- convert-dir -i /path/to/input/directory -o /path/to/output/directory
+magic-converter-cli convert-dir -i /path/to/input/directory -o /path/to/output/directory
 ```
 
 #### Help Commands
 
 For general help:
 ```bash
-cargo run -- --help
+magic-converter-cli --help
 ```
 
 For specific command help:
 ```bash
-# Help for single file conversion
-cargo run -- convert --help
-
-# Help for directory conversion
-cargo run -- convert-dir --help
+magic-converter-cli convert --help
+magic-converter-cli convert-dir --help
 ```
 
 ## Technical Details
@@ -106,7 +123,8 @@ cargo run -- convert-dir --help
 
 ## Project Structure
 
-- `src/main.rs`: Application entry point, handles CLI/GUI mode switching
+- `src/bin/cli.rs`: CLI binary entry point
+- `src/bin/gui.rs`: GUI binary entry point
 - `src/command.rs`: CLI command definitions
 - `src/service.rs`: Core business logic
 - `src/video.rs`: Video conversion implementation

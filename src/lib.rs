@@ -1,9 +1,8 @@
 mod service;
 mod video;
-mod command;
-mod gui;
+pub mod command;
+pub mod gui;
 
-pub use service::*;
-pub use video::*;
-pub use command::*;
-pub use gui::*;
+pub use command::{Cli, Commands};
+pub use gui::ConverterGui;
+pub use service::ConverterService;

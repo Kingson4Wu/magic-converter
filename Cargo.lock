@@ -1062,7 +1062,6 @@ dependencies = [
  "futures",
  "iced_core",
  "log",
- "tokio",
  "wasm-bindgen-futures",
  "wasm-timer",
 ]
