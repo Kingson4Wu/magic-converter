@@ -1,4 +1,4 @@
-use iced::widget::{self, button, column, container, row, text, text_input};
+use iced::widget::{button, column, container, row, text, text_input};
 use iced::{Alignment, Element, Length, Sandbox};
 use std::path::PathBuf;
 

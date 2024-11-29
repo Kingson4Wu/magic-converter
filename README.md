@@ -128,7 +128,7 @@ magic-converter-cli convert-dir --help
 - `src/command.rs`: CLI command definitions
 - `src/service.rs`: Core business logic
 - `src/video.rs`: Video conversion implementation
-- `src/gui.rs`: GUI implementation
+- `src/gui_widget.rs`: GUI widget implementation
 - `src/lib.rs`: Library interface and module exports
 
 ## Contributing
