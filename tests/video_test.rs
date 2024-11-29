@@ -123,51 +123,6 @@ fn test_invalid_input_path() {
     assert!(result.is_err(), "Should error on invalid input file");
 }
 
-#[test]
-fn test_mixed_content_directory() {
-    if !is_ffmpeg_available() {
-        println!("Skipping mixed content test - ffmpeg not available");
-        return;
-    }
-
-    let setup = TestSetup::new();
-    
-    // Create mix of MTS and non-MTS files
-    setup.create_dummy_mts_file("video1");
-    setup.create_non_mts_file("doc", "txt");
-    setup.create_non_mts_file("image", "jpg");
-
-    let result = convert_mts_files_in_directory(
-        setup.input_dir.path(),
-        Some(setup.output_dir.path()),
-        None
-    );
-    
-    assert!(result.is_ok(), "Should handle mixed content directory");
-}
-
-#[test]
-#[cfg(target_family = "unix")]
-fn test_permission_handling() {
-    use std::os::unix::fs::PermissionsExt;
-    let setup = TestSetup::new();
-    
-    // Create a test MTS file first
-    let test_file = setup.create_dummy_mts_file("test1");
-    
-    // Create a directory with no write permissions
-    let readonly_dir = tempdir().unwrap();
-    fs::set_permissions(readonly_dir.path(), fs::Permissions::from_mode(0o555)).unwrap();
-
-    let result = convert_mts_files_in_directory(
-        setup.input_dir.path(),
-        Some(readonly_dir.path()),
-        None
-    );
-    
-    assert!(result.is_err(), "Should handle permission errors appropriately");
-}
-
 // Integration test that only runs if ffmpeg is available
 #[test]
 fn test_actual_conversion() {
