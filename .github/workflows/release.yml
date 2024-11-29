@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Release - ${{ matrix.platform.os }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            os-name: linux
+            target: x86_64-unknown-linux-gnu
+            binary-postfix: ""
+            asset-name: magic-converter-linux-amd64
+          - os: windows-latest
+            os-name: windows
+            target: x86_64-pc-windows-msvc
+            binary-postfix: ".exe"
+            asset-name: magic-converter-windows-amd64
+          - os: macos-latest
+            os-name: macos
+            target: x86_64-apple-darwin
+            binary-postfix: ""
+            asset-name: magic-converter-macos-amd64
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.platform.target }}
+          override: true
+
+      - name: Build CLI
+        run: cargo build --release --bin magic-converter-cli --target ${{ matrix.platform.target }}
+        
+      - name: Build GUI
+        run: cargo build --release --bin magic-converter-gui --target ${{ matrix.platform.target }}
+
+      - name: Prepare assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp target/${{ matrix.platform.target }}/release/magic-converter-cli${{ matrix.platform.binary-postfix }} release/
+          cp target/${{ matrix.platform.target }}/release/magic-converter-gui${{ matrix.platform.binary-postfix }} release/
+          cd release
+          tar -czf ${{ matrix.platform.asset-name }}.tar.gz magic-converter-cli${{ matrix.platform.binary-postfix }} magic-converter-gui${{ matrix.platform.binary-postfix }}
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: release/${{ matrix.platform.asset-name }}.tar.gz
+          asset_name: ${{ matrix.platform.asset-name }}.tar.gz
+          tag: ${{ github.ref }}

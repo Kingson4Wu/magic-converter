@@ -12,7 +12,6 @@ A versatile tool for converting MTS video files to MP4 format, featuring both co
 
 ## Prerequisites
 
-- Rust (latest stable version)
 - FFmpeg installed on your system
   - For macOS: `brew install ffmpeg`
   - For Linux: `sudo apt-get install ffmpeg`
@@ -20,13 +19,29 @@ A versatile tool for converting MTS video files to MP4 format, featuring both co
 
 ## Installation
 
-1. Clone the repository:
+### Option 1: Download Pre-built Binaries (Recommended)
+
+1. Go to the [Releases](https://github.com/yourusername/magic-converter/releases) page
+2. Download the archive for your operating system:
+   - Windows: `magic-converter-windows-amd64.tar.gz`
+   - macOS: `magic-converter-macos-amd64.tar.gz`
+   - Linux: `magic-converter-linux-amd64.tar.gz`
+3. Extract the archive to get both CLI and GUI executables
+4. (Optional) Add the extracted directory to your system's PATH
+
+### Option 2: Build from Source (Requires Rust)
+
+If you want to build from source, you'll need Rust installed on your system.
+
+1. Install Rust from [https://rustup.rs/](https://rustup.rs/)
+
+2. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/magic-converter.git
 cd magic-converter
 ```
 
-2. Build the project:
+3. Build the project:
 ```bash
 # Build both CLI and GUI versions
 cargo build --release
