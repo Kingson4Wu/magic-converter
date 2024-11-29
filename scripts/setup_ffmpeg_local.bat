@@ -3,14 +3,6 @@ setlocal enabledelayedexpansion
 
 echo 正在检查系统要求...
 
-:: 检查操作系统版本
-ver | findstr /i "5\.1\." > nul
-if %errorLevel% equ 0 (
-    echo 错误：不支持 Windows XP
-    pause
-    exit /b 1
-)
-
 :: 检查管理员权限
 net session >nul 2>&1
 if %errorLevel% neq 0 (
@@ -25,7 +17,7 @@ where ffmpeg >nul 2>&1
 if %errorLevel% equ 0 (
     echo FFmpeg 已安装，检查版本...
     ffmpeg -version
-    set /p UPGRADE=是否要重新安装最新版本？(Y/N)
+    set /p UPGRADE=是否要重新安装？(Y/N)
     if /i "!UPGRADE!" neq "Y" (
         echo 安装已取消
         pause
@@ -33,64 +25,24 @@ if %errorLevel% equ 0 (
     )
 )
 
-:: 检查网络连接
-ping 8.8.8.8 -n 1 -w 1000 >nul
-if %errorLevel% neq 0 (
-    echo 警告：网络连接可能不稳定，这可能会影响下载过程
-    set /p CONTINUE=是否继续？(Y/N)
-    if /i "!CONTINUE!" neq "Y" (
-        echo 安装已取消
-        pause
-        exit /b 1
-    )
-)
-
-:: 检查磁盘空间
-for /f "tokens=3" %%a in ('dir /-c %SystemDrive% ^| find "bytes free"') do set "FREE_SPACE=%%a"
-set "FREE_SPACE=%FREE_SPACE:,=%"
-if %FREE_SPACE% lss 500000000 (
-    echo 错误：磁盘空间不足，至少需要 500MB 可用空间
-    pause
-    exit /b 1
-)
-
 :: 设置变量
-set "DOWNLOAD_URL=https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
-set "FFMPEG_ZIP=%TEMP%\ffmpeg.zip"
+set "FFMPEG_ZIP=%~dp0ffmpeg.zip"
 set "INSTALL_DIR=%ProgramFiles%\ffmpeg"
 set "PATH_TO_ADD=%INSTALL_DIR%\bin"
-set "POWERSHELL_VERSION="
 
-:: 检查 PowerShell 版本
-for /f "tokens=2 delims=." %%I in ('powershell "$PSVersionTable.PSVersion.Major"') do set "POWERSHELL_VERSION=%%I"
-if %errorLevel% neq 0 (
-    echo 错误：无法检测 PowerShell 版本
-    pause
-    exit /b 1
-)
-
-echo 正在下载 FFmpeg...
-echo 源地址: %DOWNLOAD_URL%
-echo 目标位置: %FFMPEG_ZIP%
-
-:: 使用适当的下载方法
-if defined POWERSHELL_VERSION (
-    powershell -Command "& { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%DOWNLOAD_URL%' -OutFile '%FFMPEG_ZIP%' }"
-) else (
-    bitsadmin /transfer FFmpegDownload /download /priority normal "%DOWNLOAD_URL%" "%FFMPEG_ZIP%"
-)
-
-if %errorLevel% neq 0 (
-    echo 错误：下载失败！
-    echo 请检查网络连接或手动下载：
-    echo %DOWNLOAD_URL%
-    pause
-    exit /b 1
-)
-
-echo 正在验证下载...
+:: 检查压缩包是否存在
 if not exist "%FFMPEG_ZIP%" (
-    echo 错误：下载文件未找到
+    echo 错误：找不到 FFmpeg 压缩包
+    echo 请确保 ffmpeg.zip 文件位于脚本同一目录下
+    pause
+    exit /b 1
+)
+
+:: 检查磁盘空间（解压后大约需要200MB）
+for /f "tokens=3" %%a in ('dir /-c %SystemDrive% ^| find "bytes free"') do set "FREE_SPACE=%%a"
+set "FREE_SPACE=%FREE_SPACE:,=%"
+if %FREE_SPACE% lss 209715200 (
+    echo 错误：磁盘空间不足，至少需要 200MB 可用空间
     pause
     exit /b 1
 )
@@ -100,7 +52,8 @@ if exist "%INSTALL_DIR%" (
     echo 清理旧安装...
     rd /s /q "%INSTALL_DIR%"
     if %errorLevel% neq 0 (
-        echo 错误：无法删除旧安装
+        echo 错误：无法删除旧安装，可能有程序正在使用 FFmpeg
+        echo 请关闭所有可能使用 FFmpeg 的程序后重试
         pause
         exit /b 1
     )
@@ -117,6 +70,7 @@ echo 正在解压 FFmpeg...
 powershell -Command "& { $ProgressPreference = 'SilentlyContinue'; Expand-Archive -Path '%FFMPEG_ZIP%' -DestinationPath '%INSTALL_DIR%' -Force }"
 if %errorLevel% neq 0 (
     echo 错误：解压失败！
+    echo 请确保压缩包完整且未损坏
     pause
     exit /b 1
 )
@@ -151,10 +105,6 @@ if not defined PATH_FOUND (
         exit /b 1
     )
 )
-
-:: 清理临时文件
-echo 正在清理...
-del "%FFMPEG_ZIP%" 2>nul
 
 :: 验证安装
 echo 正在验证安装...
