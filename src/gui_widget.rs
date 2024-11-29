@@ -1,5 +1,5 @@
 use iced::widget::{button, column, container, row, text, progress_bar};
-use iced::{Alignment, Element, Length, Sandbox};
+use iced::{Application, Command, Element, Length, Theme, Alignment};
 use std::path::PathBuf;
 use rfd::FileDialog;
 use std::sync::{mpsc, Arc};
@@ -29,51 +29,64 @@ pub struct ConverterGui {
     pub service: ConverterService,
 }
 
-impl Sandbox for ConverterGui {
+impl Application for ConverterGui {
     type Message = Message;
+    type Theme = Theme;
+    type Executor = iced::executor::Default;
+    type Flags = ();
 
-    fn new() -> Self {
-        Self {
-            input_path: String::new(),
-            output_path: String::new(),
-            status_message: String::from("Ready to convert"),
-            conversion_progress: 0.0,
-            is_converting: false,
-            service: ConverterService::new(),
-        }
+    fn new(_flags: ()) -> (Self, Command<Message>) {
+        (
+            Self {
+                input_path: String::new(),
+                output_path: String::new(),
+                status_message: String::from("Select a file or directory to convert"),
+                conversion_progress: 0.0,
+                is_converting: false,
+                service: ConverterService::new(),
+            },
+            Command::none(),
+        )
     }
 
     fn title(&self) -> String {
-        String::from("MTS to MP4 Converter")
+        String::from("Magic Converter")
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::SelectInputPath => {
-                let file_dialog = FileDialog::new()
-                    .set_title("Select Input File or Directory")
-                    .pick_file();
-                
-                if let Some(path) = file_dialog {
+                if let Some(path) = FileDialog::new()
+                    .add_filter("MTS Video", &["MTS", "mts"])
+                    .pick_file()
+                {
                     self.input_path = path.to_string_lossy().into_owned();
+                    self.status_message = String::from("Ready to convert");
                 }
+                Command::none()
             }
             Message::SelectOutputPath => {
-                let file_dialog = FileDialog::new()
-                    .set_title("Select Output Directory")
-                    .pick_folder();
-                
-                if let Some(path) = file_dialog {
+                if let Some(path) = FileDialog::new()
+                    .pick_folder()
+                {
                     self.output_path = path.to_string_lossy().into_owned();
                 }
+                Command::none()
             }
             Message::InputPathSelected(Some(path)) => {
                 self.input_path = path.to_string_lossy().into_owned();
+                self.status_message = String::from("Ready to convert");
+                Command::none()
+            }
+            Message::InputPathSelected(None) => {
+                self.status_message = String::from("No file selected");
+                Command::none()
             }
             Message::OutputPathSelected(Some(path)) => {
                 self.output_path = path.to_string_lossy().into_owned();
+                Command::none()
             }
-            Message::InputPathSelected(None) | Message::OutputPathSelected(None) => {}
+            Message::OutputPathSelected(None) => Command::none(),
             Message::ConvertSingleFile => {
                 if !self.is_converting {
                     self.is_converting = true;
@@ -87,44 +100,39 @@ impl Sandbox for ConverterGui {
                         Some(PathBuf::from(&self.output_path))
                     };
 
-                    // Create a channel for progress updates
-                    let (progress_tx, progress_rx) = mpsc::channel();
-                    let (complete_tx, complete_rx) = mpsc::channel();
-
-                    // Create a progress callback
-                    let progress_callback = Arc::new(move |progress: f32| {
-                        let _ = progress_tx.send(progress);
-                    });
-
-                    // Spawn a thread for conversion
                     let service = self.service.clone();
-                    thread::spawn(move || {
-                        let result = service.convert_file(&input, output.as_deref(), Some(progress_callback));
-                        let _ = complete_tx.send(result.map_err(|e| e.to_string()));
-                    });
+                    let input_path = input.clone();
 
-                    // Handle progress updates
-                    thread::spawn(move || {
-                        while let Ok(progress) = progress_rx.recv() {
-                            // Update UI with progress
-                            let _ = iced::futures::executor::block_on(async {
-                                iced::Command::perform(
-                                    async move { Message::ConversionProgress(progress) },
-                                    std::convert::identity,
-                                )
+                    Command::perform(
+                        async move {
+                            let (tx, rx) = mpsc::channel();
+                            let tx_progress = tx.clone();
+                            let progress_callback = Arc::new(move |progress: f32| {
+                                let _ = tx_progress.send(Message::ConversionProgress(progress));
                             });
-                        }
 
-                        // Handle completion
-                        if let Ok(result) = complete_rx.recv() {
-                            let _ = iced::futures::executor::block_on(async {
-                                iced::Command::perform(
-                                    async move { Message::ConversionComplete(result) },
-                                    std::convert::identity,
-                                )
+                            // Spawn conversion thread
+                            let tx_complete = tx.clone();
+                            thread::spawn(move || {
+                                let result = service.convert_file(&input_path, output.as_deref(), Some(progress_callback));
+                                let _ = tx_complete.send(Message::ConversionComplete(result.map_err(|e| e.to_string())));
                             });
-                        }
-                    });
+
+                            // Handle messages
+                            let mut last_progress = Message::ConversionProgress(0.0);
+                            while let Ok(message) = rx.recv() {
+                                match message {
+                                    Message::ConversionComplete(_) => return message,
+                                    Message::ConversionProgress(_) => last_progress = message,
+                                    _ => continue,
+                                }
+                            }
+                            last_progress
+                        },
+                        std::convert::identity
+                    )
+                } else {
+                    Command::none()
                 }
             }
             Message::ConvertDirectory => {
@@ -140,49 +148,45 @@ impl Sandbox for ConverterGui {
                         Some(PathBuf::from(&self.output_path))
                     };
 
-                    // Create a channel for progress updates
-                    let (progress_tx, progress_rx) = mpsc::channel();
-                    let (complete_tx, complete_rx) = mpsc::channel();
-
-                    // Create a progress callback
-                    let progress_callback = Arc::new(move |progress: f32| {
-                        let _ = progress_tx.send(progress);
-                    });
-
-                    // Spawn a thread for conversion
                     let service = self.service.clone();
-                    thread::spawn(move || {
-                        let result = service.convert_directory(&input, output.as_deref(), Some(progress_callback));
-                        let _ = complete_tx.send(result.map_err(|e| e.to_string()));
-                    });
+                    let input_path = input.clone();
 
-                    // Handle progress updates
-                    thread::spawn(move || {
-                        while let Ok(progress) = progress_rx.recv() {
-                            // Update UI with progress
-                            let _ = iced::futures::executor::block_on(async {
-                                iced::Command::perform(
-                                    async move { Message::ConversionProgress(progress) },
-                                    std::convert::identity,
-                                )
+                    Command::perform(
+                        async move {
+                            let (tx, rx) = mpsc::channel();
+                            let tx_progress = tx.clone();
+                            let progress_callback = Arc::new(move |progress: f32| {
+                                let _ = tx_progress.send(Message::ConversionProgress(progress));
                             });
-                        }
 
-                        // Handle completion
-                        if let Ok(result) = complete_rx.recv() {
-                            let _ = iced::futures::executor::block_on(async {
-                                iced::Command::perform(
-                                    async move { Message::ConversionComplete(result) },
-                                    std::convert::identity,
-                                )
+                            // Spawn conversion thread
+                            let tx_complete = tx.clone();
+                            thread::spawn(move || {
+                                let result = service.convert_directory(&input_path, output.as_deref(), Some(progress_callback));
+                                let _ = tx_complete.send(Message::ConversionComplete(result.map_err(|e| e.to_string())));
                             });
-                        }
-                    });
+
+                            // Handle messages
+                            let mut last_progress = Message::ConversionProgress(0.0);
+                            while let Ok(message) = rx.recv() {
+                                match message {
+                                    Message::ConversionComplete(_) => return message,
+                                    Message::ConversionProgress(_) => last_progress = message,
+                                    _ => continue,
+                                }
+                            }
+                            last_progress
+                        },
+                        std::convert::identity
+                    )
+                } else {
+                    Command::none()
                 }
             }
             Message::ConversionProgress(progress) => {
                 self.conversion_progress = progress;
                 self.status_message = format!("Converting... {}%", (progress * 100.0) as i32);
+                Command::none()
             }
             Message::ConversionComplete(result) => {
                 self.is_converting = false;
@@ -196,65 +200,52 @@ impl Sandbox for ConverterGui {
                         self.conversion_progress = 0.0;
                     }
                 }
+                Command::none()
             }
         }
     }
 
     fn view(&self) -> Element<Message> {
         let input_row = row![
-            text("Input Path:").width(Length::Fixed(100.0)),
+            text("Input:").width(Length::Fixed(60.0)),
             text(&self.input_path).width(Length::Fill),
-            button("Browse...").on_press(Message::SelectInputPath)
+            button("Browse").on_press(Message::SelectInputPath),
         ]
-        .padding(10)
+        .spacing(10)
         .align_items(Alignment::Center);
 
         let output_row = row![
-            text("Output Path:").width(Length::Fixed(100.0)),
+            text("Output:").width(Length::Fixed(60.0)),
             text(&self.output_path).width(Length::Fill),
-            button("Browse...").on_press(Message::SelectOutputPath)
+            button("Browse").on_press(Message::SelectOutputPath),
         ]
-        .padding(10)
+        .spacing(10)
         .align_items(Alignment::Center);
 
         let button_row = row![
-            button("Convert Single File")
+            button("Convert File")
                 .on_press(Message::ConvertSingleFile)
-                .padding(10)
-                .width(Length::Fixed(150.0))
-                .style(if self.is_converting {
-                    iced::theme::Button::Secondary
-                } else {
-                    iced::theme::Button::Primary
-                }),
+                .width(Length::Fixed(100.0)),
             button("Convert Directory")
                 .on_press(Message::ConvertDirectory)
-                .padding(10)
-                .width(Length::Fixed(150.0))
-                .style(if self.is_converting {
-                    iced::theme::Button::Secondary
-                } else {
-                    iced::theme::Button::Primary
-                })
+                .width(Length::Fixed(120.0)),
         ]
-        .spacing(20)
-        .padding(10);
+        .spacing(10)
+        .align_items(Alignment::Center);
 
         let progress_bar = progress_bar(0.0..=1.0, self.conversion_progress)
             .width(Length::Fill);
-
-        let status = text(&self.status_message).size(16);
 
         let content = column![
             input_row,
             output_row,
             button_row,
             progress_bar,
-            status
+            text(&self.status_message),
         ]
-        .spacing(10)
+        .spacing(20)
         .padding(20)
-        .align_items(Alignment::Center);
+        .max_width(800);
 
         container(content)
             .width(Length::Fill)
@@ -267,6 +258,6 @@ impl Sandbox for ConverterGui {
 
 impl ConverterGui {
     pub fn run(settings: iced::Settings<()>) -> iced::Result {
-        <Self as Sandbox>::run(settings)
+        <Self as Application>::run(settings)
     }
 }
