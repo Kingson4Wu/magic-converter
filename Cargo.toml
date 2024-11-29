@@ -9,6 +9,9 @@ rfd = "0.12"
 tokio = { version = "1.36", features = ["full"] }
 clap = { version = "4.5.1", features = ["derive"] }
 
+[dev-dependencies]
+tempfile = "3.8"
+
 [[bin]]
 name = "magic-converter-cli"
 path = "src/bin/cli.rs"
