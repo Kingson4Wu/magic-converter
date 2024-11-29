@@ -156,7 +156,7 @@ magic-converter-cli convert-dir --help
 
 ## License
 
-[MIT License](LICENSE)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
