@@ -12,11 +12,6 @@ jobs:
     strategy:
       matrix:
         platform:
-          - os: ubuntu-latest
-            os-name: linux
-            target: x86_64-unknown-linux-gnu
-            binary-postfix: ""
-            asset-name: magic-converter-linux-amd64
           - os: windows-latest
             os-name: windows
             target: x86_64-pc-windows-msvc
